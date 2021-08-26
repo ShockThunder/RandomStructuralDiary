@@ -32,7 +32,22 @@ export default class MyPlugin extends Plugin {
 				let leaf = this.app.workspace.activeLeaf;
 				if (leaf) {
 					if (!checking) {
-						new SampleModal(this.app).open();
+						let tt = this.app.vault.getMarkdownFiles().find(x => x.name.contains("StructureDiaryQuestions"));
+						this.app.vault.read(tt).then(result =>
+							{
+								let questions = this.splitByHeaders(result);
+								console.log(questions)
+
+								let outputString = "";
+
+								for(let i = 0; i < questions.length; i++){
+									outputString = outputString + "\n" + questions[i].join("\n");
+								}
+								let file = this.app.workspace.getActiveFile();
+								this.app.vault.modify(file, outputString);
+							}
+						);
+						console.log(tt);
 					}
 					return true;
 				}
@@ -46,9 +61,9 @@ export default class MyPlugin extends Plugin {
 			console.log('codemirror', cm);
 		});
 
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
+		// this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
+		// 	console.log('click', evt);
+		// });
 
 		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 	}
@@ -63,6 +78,37 @@ export default class MyPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	splitByHeaders(content: string): string[][]{
+		let headerSymbols="# ";
+		let splitedHeaders = content.split(headerSymbols);
+		let questions: string[][] = [];
+		for (let i = 0; i < splitedHeaders.length; i++){
+			let curr = splitedHeaders[i];
+			let curQs = curr.split("\n");
+			let rawResult = [];
+			for(let j = 1; j < curQs.length; j++){
+				if(curQs[j])
+					rawResult.push(curQs[j]);
+			}
+
+			if(rawResult.length > 0){
+				let result = [];
+
+				result.push(rawResult[this.getRandomInt(rawResult.length)]);
+				result.push(rawResult[this.getRandomInt(rawResult.length)]);
+
+				if(result.length > 0)
+					questions.push(result);
+			}
+		}
+
+		return questions;
+	}
+
+	getRandomInt(max: number): number {
+		return Math.floor(Math.random() * max);
 	}
 }
 
