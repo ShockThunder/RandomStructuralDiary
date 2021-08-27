@@ -8,26 +8,20 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 	mySetting: 'default'
 }
 
+const NUM_OF_QUESTIONS = 2;
+
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 
 	async onload() {
-		console.log('loading plugin');
-
 		await this.loadSettings();
-
-		this.addRibbonIcon('dice', 'Sample Plugin', () => {
-			new Notice('This is a notice!');
-		});
 
 		this.addStatusBarItem().setText('Status Bar Text');
 
 		this.addCommand({
 			id: 'open-sample-modal',
 			name: 'Open Sample Modal',
-			// callback: () => {
-			// 	console.log('Simple Callback');
-			// },
+
 			checkCallback: (checking: boolean) => {
 				let leaf = this.app.workspace.activeLeaf;
 				if (leaf) {
@@ -35,19 +29,16 @@ export default class MyPlugin extends Plugin {
 						let tt = this.app.vault.getMarkdownFiles().find(x => x.name.contains("StructureDiaryQuestions"));
 						this.app.vault.read(tt).then(result =>
 							{
-								let questions = this.splitByHeaders(result);
-								console.log(questions)
+								let sections = this.getSections(result);
+								let questions = sections.map(x => this.generateRandomQuestionsFromSection(x, NUM_OF_QUESTIONS), this);
+								let flattenQuestions = questions.reduce((acc, val) => acc.concat(val), []);
 
-								let outputString = "";
+								let outputString = flattenQuestions.join("\n\n\n");
 
-								for(let i = 0; i < questions.length; i++){
-									outputString = outputString + "\n" + questions[i].join("\n");
-								}
 								let file = this.app.workspace.getActiveFile();
 								this.app.vault.modify(file, outputString);
 							}
 						);
-						console.log(tt);
 					}
 					return true;
 				}
@@ -56,20 +47,9 @@ export default class MyPlugin extends Plugin {
 		});
 
 		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		this.registerCodeMirror((cm: CodeMirror.Editor) => {
-			console.log('codemirror', cm);
-		});
-
-		// this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-		// 	console.log('click', evt);
-		// });
-
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 	}
 
 	onunload() {
-		console.log('unloading plugin');
 	}
 
 	async loadSettings() {
@@ -80,35 +60,69 @@ export default class MyPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	splitByHeaders(content: string): string[][]{
-		let headerSymbols="# ";
-		let splitedHeaders = content.split(headerSymbols);
-		let questions: string[][] = [];
+	/**
+	 * Creates array of sections with questions without headers
+	 * @param content
+	 */
+	private getSections(content: string): string[][]{
+		let headerSymbol="# ";
+		let splitedHeaders = content.split(headerSymbol);
+
+		let sections: string[][] = [];
 		for (let i = 0; i < splitedHeaders.length; i++){
-			let curr = splitedHeaders[i];
-			let curQs = curr.split("\n");
-			let rawResult = [];
-			for(let j = 1; j < curQs.length; j++){
-				if(curQs[j])
-					rawResult.push(curQs[j]);
-			}
+			let currentSection = splitedHeaders[i];
+			let result = currentSection.split("\n");
 
-			if(rawResult.length > 0){
-				let result = [];
+			result = result.filter(function(e){return e});
+			result.shift();
 
-				result.push(rawResult[this.getRandomInt(rawResult.length)]);
-				result.push(rawResult[this.getRandomInt(rawResult.length)]);
-
-				if(result.length > 0)
-					questions.push(result);
-			}
+			if(result.length)
+				sections.push(result);
 		}
 
-		return questions;
+		return sections;
 	}
 
-	getRandomInt(max: number): number {
+	/**
+	 * Returns random int from 0 to max
+	 * @param max int top border
+	 * @private
+	 */
+	private getRandomInt(max: number): number {
 		return Math.floor(Math.random() * max);
+	}
+
+	/**
+	 * Create array of random questions
+	 * @param section questions section
+	 * @param numOfQuestions number of generated questions
+	 * @private
+	 */
+	private generateRandomQuestionsFromSection(section: string[], numOfQuestions: number): string[]{
+		if(numOfQuestions >= section.length)
+			return section;
+		if(numOfQuestions === 0)
+			return [];
+
+		let result = [];
+
+		for(let i = 0; i < numOfQuestions; i++){
+			let question = this.getRandomQuestion(section);
+			section.remove(question);
+			result.push(question);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Returns random question from array
+	 * @param questions question array
+	 * @private
+	 */
+	private getRandomQuestion(questions: string[]): string{
+		let randomNumber = this.getRandomInt(questions.length);
+		return questions[randomNumber];
 	}
 }
 
