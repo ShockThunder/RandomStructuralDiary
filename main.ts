@@ -1,14 +1,17 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
 interface MyPluginSettings {
-	mySetting: string;
+	filename: string;
 }
+const DEFAULT_FILENAME = "RandomStructuralDiaryQuestions";
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+	filename: DEFAULT_FILENAME
 }
 
 const NUM_OF_QUESTIONS = 2;
+
+
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
@@ -19,15 +22,26 @@ export default class MyPlugin extends Plugin {
 		this.addStatusBarItem().setText('Status Bar Text');
 
 		this.addCommand({
-			id: 'open-sample-modal',
-			name: 'Open Sample Modal',
+			id: 'create-questions-list',
+			name: 'Create questions list',
 
 			checkCallback: (checking: boolean) => {
 				let leaf = this.app.workspace.activeLeaf;
 				if (leaf) {
 					if (!checking) {
-						let tt = this.app.vault.getMarkdownFiles().find(x => x.name.contains("StructureDiaryQuestions"));
-						this.app.vault.read(tt).then(result =>
+						let file = this.app.vault.getMarkdownFiles().find(x => x.name.contains(this.settings.filename));
+						if(!file){
+							const pathToDefaultFile = this.manifest.dir + `/${DEFAULT_FILENAME}.md`;
+							const adapter = this.app.vault.adapter;
+							adapter.read(pathToDefaultFile).then(result => {
+								console.log(this.settings);
+								this.app.vault.create(`${this.settings.filename}.md`, result)
+									.then(createdFile => {
+										file = createdFile;
+									});
+							});
+						}
+						this.app.vault.read(file).then(result =>
 							{
 								let sections = this.getSections(result);
 								let questions = sections.map(x => this.generateRandomQuestionsFromSection(x, NUM_OF_QUESTIONS), this);
@@ -73,9 +87,8 @@ export default class MyPlugin extends Plugin {
 			let currentSection = splitedHeaders[i];
 			let result = currentSection.split("\n");
 
-			result = result.filter(function(e){return e});
+			result = result.filter(x => x.trim().length > 0);
 			result.shift();
-
 			if(result.length)
 				sections.push(result);
 		}
@@ -126,22 +139,6 @@ export default class MyPlugin extends Plugin {
 	}
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		let {contentEl} = this;
-		contentEl.empty();
-	}
-}
-
 class SampleSettingTab extends PluginSettingTab {
 	plugin: MyPlugin;
 
@@ -155,18 +152,17 @@ class SampleSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'Settings for my awesome plugin.'});
+		containerEl.createEl('h2', {text: 'Settings for RandomStructuralDiary plugin.'});
 
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue('')
-				.onChange(async (value) => {
-					console.log('Secret: ' + value);
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
-	}
+			new Setting(containerEl)
+				.setName('Path to questions file')
+				.setDesc('Path to questions file')
+				.addText(text => text
+					.setPlaceholder(DEFAULT_FILENAME)
+					.setValue(DEFAULT_FILENAME)
+					.onChange(async (value) => {
+						this.plugin.settings.filename = value;
+						await this.plugin.saveSettings();
+					}));
+		}
 }
