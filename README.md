@@ -26,3 +26,6 @@ Use the template
 Like `1-3;2-2;4-0` - it takes three questions from first section, two from second and zero from fourth;
 If section ommited then number of questions picks randomly (it can be 0);
 
+To use plugin create a new file and execute command
+`Create questions list`
+
