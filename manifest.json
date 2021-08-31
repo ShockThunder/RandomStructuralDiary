@@ -4,7 +4,7 @@
 	"version": "1.0.0",
 	"minAppVersion": "0.9.12",
 	"description": "This is a plugin for picking random questions from prepared question list. It allows you answer on different questions each time.",
-	"author": "Timur Sidoriuk 'ShockThunder'",
+	"author": "ShockThunder",
 	"authorUrl": "https://github.com/ShockThunder",
 	"isDesktopOnly": false
 }
