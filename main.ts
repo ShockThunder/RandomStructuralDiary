@@ -7,7 +7,7 @@ interface MyPluginSettings {
 const DEFAULT_FILENAME = "RandomStructuralDiaryQuestions";
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	filename: '',
+	filename: DEFAULT_FILENAME,
 	questionsTemplate: ''
 }
 
