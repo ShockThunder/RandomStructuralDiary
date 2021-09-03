@@ -17,7 +17,7 @@ You can setup your own questions for example
         Question2
         Question3
 ```
-And fill this filename in plugin settings
+And fill this filename in plugin settings.
 It's important to keep section headers as #headers.
 
 Also you can setup number of questions from each section.
