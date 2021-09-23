@@ -18,7 +18,9 @@ You can setup your own questions for example
         Question3
 ```
 And fill this filename in plugin settings.
-It's important to keep section headers as #headers.
+It's important to keep section headers as # headers.
+Also questions separated by linebrakes `\n`. So, please write your questions
+by one at line.
 
 Also you can setup number of questions from each section.
 Use the template 
@@ -28,4 +30,9 @@ If section ommited then number of questions picks randomly (it can be 0);
 
 To use plugin create a new file and execute command
 `Create questions list`
+
+Release 1.0.6
+ - Add support for questions files in folders
+ - Add autofill for filename
+ - Add option to show or hide section headers
 
