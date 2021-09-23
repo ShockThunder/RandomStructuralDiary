@@ -4,15 +4,15 @@ import {FileSuggest} from "./file-suggest";
 interface PluginSettings {
     fileWithQuestions: string;
     questionsTemplate: string;
+    showHeaders: boolean;
 }
 
 const MARKDOWN_EXTENSION = "md";
 
-const DEFAULT_FILENAME = "RandomStructuralDiaryQuestions";
-
 const DEFAULT_SETTINGS: PluginSettings = {
     fileWithQuestions: null,
-    questionsTemplate: ''
+    questionsTemplate: '',
+    showHeaders: false
 }
 
 
@@ -55,6 +55,7 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
 
     private async fillFileWithQuestions(fileContent: string) {
         let sections = this.getSections(fileContent);
+        let headers = sections.map(x => x[0]);
         let questionsSettings = this.parseQuestionSettings();
         let questions = sections.map(x => {
             let numOfQuestions = questionsSettings.get(sections.indexOf(x) + 1);
@@ -64,7 +65,12 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
             return this.generateRandomQuestionsFromSection(x, numOfQuestions);
         }, this);
 
-        let flattenQuestions = questions.reduce((acc, val) => acc.concat(val), []);
+        let flattenQuestions = questions.reduce((acc, val, index) => {
+            if(this.settings.showHeaders)
+                return acc.concat(headers[index], val);
+            else 
+                return acc.concat(val);
+        }, []);
 
         let outputString = flattenQuestions.join("\n\n\n");
 
@@ -89,27 +95,30 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
     }
 
     /**
-     * Creates array of sections with questions without headers
+     * Creates array of sections with questions
      * @param content
      */
     private getSections(content: string): string[][] {
-        let headerSymbol = "# ";
-        let splitedHeaders = content.split(headerSymbol);
+        let splitLines = content.split("\n");
 
         let sections: string[][] = [];
-        for (let i = 0; i < splitedHeaders.length; i++) {
-            let currentSection = splitedHeaders[i];
-            let result = currentSection.split("\n");
-
-            result = result.filter(x => x.trim().length > 0);
-            result.shift();
-            if (result.length)
-                sections.push(result);
+        let currentArray: string[] = [];
+        for (let i = 0; i < splitLines.length; i++) {
+            
+            let curEl = splitLines[i];
+            
+            if(curEl.contains("# ")){
+                if(currentArray.length)
+                    sections.push(currentArray)
+                currentArray = [];
+            }
+            currentArray.push(curEl.trim())
         }
+        sections.push(currentArray)
 
         return sections;
     }
-
+    
     /**
      * Returns random int from 0 to max
      * @param max int top border
@@ -126,6 +135,7 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
      * @private
      */
     private generateRandomQuestionsFromSection(section: string[], numOfQuestions: number): string[] {
+        section.shift();
         if (numOfQuestions >= section.length)
             return section;
         if (numOfQuestions === 0)
@@ -221,7 +231,18 @@ class SampleSettingTab
                     this.plugin.settings.questionsTemplate = new_template;
                     await this.plugin.saveSettings();
                 }));
-        
+
+        new Setting(containerEl)
+            .setName('Show headers')
+            .setDesc('Show header for generated groups')
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.showHeaders)
+                .onChange(async (value) => {
+                    this.plugin.settings.showHeaders = value
+                    await this.plugin.saveSettings();
+                }));
+
+
     }
 }
 
