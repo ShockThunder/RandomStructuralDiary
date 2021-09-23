@@ -1,7 +1,8 @@
 import {App, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf} from 'obsidian';
+import {FileSuggest} from "./file-suggest";
 
 interface PluginSettings {
-    filename: string;
+    fileWithQuestions: string;
     questionsTemplate: string;
 }
 
@@ -10,7 +11,7 @@ const MARKDOWN_EXTENSION = "md";
 const DEFAULT_FILENAME = "RandomStructuralDiaryQuestions";
 
 const DEFAULT_SETTINGS: PluginSettings = {
-    filename: null,
+    fileWithQuestions: null,
     questionsTemplate: ''
 }
 
@@ -27,7 +28,7 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
 
             callback: async () => {
 
-                let file = this.app.vault.getAbstractFileByPath(`${this.settings.filename}.${MARKDOWN_EXTENSION}`);
+                let file = this.app.vault.getAbstractFileByPath(`${this.settings.fileWithQuestions}`);
                 if (file instanceof TFile){
                     let fileContent = await this.app.vault.cachedRead(file);
                     await this.fillFileWithQuestions(fileContent);
@@ -197,14 +198,18 @@ class SampleSettingTab
         containerEl.createEl('h2', {text: 'Settings for RandomStructuralDiary plugin.'});
 
         new Setting(containerEl)
-            .setName('Path to questions file')
-            .addText(text => text
-                .setPlaceholder('FileName')
-                .setValue(this.plugin.settings.filename)
-                .onChange(async (new_filename) => {
-                    this.plugin.settings.filename = new_filename;
-                    await this.plugin.saveSettings();
-                }));
+            .setName("File with questions to open")
+            .setDesc("With file extension!")
+            .addText(cb => {
+                new FileSuggest(this.app, cb.inputEl);
+                cb
+                    .setPlaceholder("Directory/file.md")
+                    .setValue(this.plugin.settings.fileWithQuestions)
+                    .onChange((value) => {
+                        this.plugin.settings.fileWithQuestions = value;
+                        this.plugin.saveSettings();
+                    });
+            });
 
         new Setting(containerEl)
             .setName('Questions Template')
@@ -216,6 +221,7 @@ class SampleSettingTab
                     this.plugin.settings.questionsTemplate = new_template;
                     await this.plugin.saveSettings();
                 }));
+        
     }
 }
 
