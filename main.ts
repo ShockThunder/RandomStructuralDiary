@@ -5,6 +5,8 @@ interface PluginSettings {
     fileWithQuestions: string;
     questionsTemplate: string;
     showHeaders: boolean;
+    useAdvancedTemplate: boolean;
+    globalNumberOfQuestions: number;
 }
 
 const MARKDOWN_EXTENSION = "md";
@@ -12,7 +14,9 @@ const MARKDOWN_EXTENSION = "md";
 const DEFAULT_SETTINGS: PluginSettings = {
     fileWithQuestions: null,
     questionsTemplate: '',
-    showHeaders: false
+    showHeaders: false,
+    useAdvancedTemplate: false,
+    globalNumberOfQuestions: 5
 }
 
 
@@ -29,17 +33,16 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
             callback: async () => {
 
                 let file = this.app.vault.getAbstractFileByPath(`${this.settings.fileWithQuestions}`);
-                if (file instanceof TFile){
+                if (file instanceof TFile) {
                     let fileContent = await this.app.vault.cachedRead(file);
                     await this.fillFileWithQuestions(fileContent);
-                }
-                else {
+                } else {
                     await this.fillFileWithQuestions(DEFAULT_QUESTIONS);
                 }
             }
         });
 
-        this.addSettingTab(new SampleSettingTab(this.app, this));
+        this.addSettingTab(new SettingTab(this.app, this));
     }
 
     onunload() {
@@ -54,44 +57,48 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
     }
 
     private async fillFileWithQuestions(fileContent: string) {
-        let sections = this.getSections(fileContent);
-        let headers = sections.map(x => x[0]);
-        let questionsSettings = this.parseQuestionSettings();
-        let questions = sections.map(x => {
-            let numOfQuestions = questionsSettings.get(sections.indexOf(x) + 1);
-            if (!numOfQuestions)
-                numOfQuestions = this.getRandomInt(x.length);
+        if (this.settings.useAdvancedTemplate) {
 
-            return this.generateRandomQuestionsFromSection(x, numOfQuestions);
-        }, this);
+            let sections = this.getSections(fileContent);
+            let headers = sections.map(x => x[0]);
+            let questionsSettings = this.parseQuestionSettings();
+            let questions = sections.map(x => {
+                let numOfQuestions = questionsSettings.get(sections.indexOf(x) + 1);
+                if (!numOfQuestions)
+                    numOfQuestions = this.getRandomInt(x.length);
 
-        let flattenQuestions = questions.reduce((acc, val, index) => {
-            if(this.settings.showHeaders)
-                return acc.concat(headers[index], val);
-            else 
-                return acc.concat(val);
-        }, []);
+                return this.generateRandomQuestionsFromSection(x, numOfQuestions);
+            }, this);
 
-        let outputString = flattenQuestions.join("\n\n\n");
+            let flattenQuestions = questions.reduce((acc, val, index) => {
+                if (this.settings.showHeaders)
+                    return acc.concat(headers[index], val);
+                else
+                    return acc.concat(val);
+            }, []);
 
-        let activeFile = this.app.workspace.getActiveFile();
-        if(!activeFile || activeFile.extension !== MARKDOWN_EXTENSION){
-            let fileName = `RandomDiaryQuestions by ${this.getFancyDate()}.${MARKDOWN_EXTENSION}`;
-            activeFile = await this.app.vault.create(fileName, outputString);
+            let outputString = flattenQuestions.join("\n\n\n");
+
+            let activeFile = this.app.workspace.getActiveFile();
+            if (!activeFile || activeFile.extension !== MARKDOWN_EXTENSION) {
+                let fileName = `RandomDiaryQuestions by ${this.getFancyDate()}.${MARKDOWN_EXTENSION}`;
+                activeFile = await this.app.vault.create(fileName, outputString);
+            } else {
+                let userContent = await this.app.vault.cachedRead(activeFile);
+                outputString = userContent + '\n\n' + outputString;
+                await this.app.vault.modify(activeFile, outputString);
+            }
+
+            let leaf = this.app.workspace.getMostRecentLeaf();
+            if (!leaf) {
+                let leaf = new WorkspaceLeaf();
+                this.app.workspace.createLeafBySplit(leaf);
+            }
+
+            await leaf.openFile(activeFile);
+        } else {
+    
         }
-        else {
-            let userContent = await this.app.vault.cachedRead(activeFile);
-            outputString = userContent + '\n\n' + outputString;
-            await this.app.vault.modify(activeFile, outputString);
-        }
-
-        let leaf = this.app.workspace.getMostRecentLeaf();
-        if(!leaf){
-            let leaf = new WorkspaceLeaf();
-            this.app.workspace.createLeafBySplit(leaf);
-        }
-
-        await leaf.openFile(activeFile);
     }
 
     /**
@@ -104,11 +111,11 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
         let sections: string[][] = [];
         let currentArray: string[] = [];
         for (let i = 0; i < splitLines.length; i++) {
-            
+
             let curEl = splitLines[i];
-            
-            if(curEl.contains("# ")){
-                if(currentArray.length)
+
+            if (curEl.contains("# ")) {
+                if (currentArray.length)
                     sections.push(currentArray)
                 currentArray = [];
             }
@@ -118,7 +125,7 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
 
         return sections;
     }
-    
+
     /**
      * Returns random int from 0 to max
      * @param max int top border
@@ -184,14 +191,14 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
         return result;
     }
 
-    private getFancyDate(): string{
+    private getFancyDate(): string {
         let date = new Date();
         let fancyDate = `${date.getDay() + 1}-${date.getMonth() + 1}-${date.getFullYear()}`
         return fancyDate;
     }
 }
 
-class SampleSettingTab
+class SettingTab
     extends PluginSettingTab {
     plugin: RandomStructuralDiaryPlugin;
 
@@ -215,11 +222,34 @@ class SampleSettingTab
                 cb
                     .setPlaceholder("Directory/file.md")
                     .setValue(this.plugin.settings.fileWithQuestions)
-                    .onChange((value) => {
+                    .onChange(async (value) => {
                         this.plugin.settings.fileWithQuestions = value;
-                        this.plugin.saveSettings();
+                        await this.plugin.saveSettings();
                     });
             });
+
+        new Setting(containerEl)
+            .setName('Global number of questions')
+            .setDesc('Picks that number of questions from the whole questions file')
+            .addText(text => text
+                .setPlaceholder('5')
+                .setValue(this.plugin.settings.globalNumberOfQuestions.toString())
+                .onChange(async (new_template) => {
+                    this.plugin.settings.globalNumberOfQuestions = +new_template;
+                    await this.plugin.saveSettings();
+                }))
+            .setDisabled(this.plugin.settings.useAdvancedTemplate);
+
+        new Setting(containerEl)
+            .setName('Use advanced template')
+            .setDesc('Allows you to setup template in old fashion way')
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.useAdvancedTemplate)
+                    .onChange(async (value) => {
+                        this.plugin.settings.useAdvancedTemplate = value
+                        await this.plugin.saveSettings();
+                        await this.display();
+                    }));
 
         new Setting(containerEl)
             .setName('Questions Template')
@@ -230,19 +260,19 @@ class SampleSettingTab
                 .onChange(async (new_template) => {
                     this.plugin.settings.questionsTemplate = new_template;
                     await this.plugin.saveSettings();
-                }));
+                }))
+            .setDisabled(!this.plugin.settings.useAdvancedTemplate);
 
         new Setting(containerEl)
             .setName('Show headers')
-            .setDesc('Show header for generated groups')
+            .setDesc('Show header for generated groups. Option available only for advanced template.')
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.showHeaders)
-                .onChange(async (value) => {
-                    this.plugin.settings.showHeaders = value
-                    await this.plugin.saveSettings();
-                }));
-
-
+                    .onChange(async (value) => {
+                        this.plugin.settings.showHeaders = value
+                        await this.plugin.saveSettings();
+                    }))
+            .setDisabled(!this.plugin.settings.useAdvancedTemplate);
     }
 }
 
