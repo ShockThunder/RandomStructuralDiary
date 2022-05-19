@@ -53,7 +53,7 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
         let oldSettings = await this.loadData();
         this.settings = Object.assign({}, DEFAULT_SETTINGS, oldSettings);
     
-        if(!oldSettings.hasOwnProperty("useAdvancedTemplate")){
+        if(oldSettings && !oldSettings.hasOwnProperty("useAdvancedTemplate")){
             this.settings.useAdvancedTemplate = true;
         }
 
