@@ -1,5 +1,6 @@
 import {App, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf} from 'obsidian';
 import {FileSuggest} from "./file-suggest";
+import {Obj} from "tern";
 
 interface PluginSettings {
     fileWithQuestions: string;
@@ -49,7 +50,13 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        let oldSettings = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, oldSettings);
+    
+        if(!oldSettings.hasOwnProperty("useAdvancedTemplate")){
+            this.settings.useAdvancedTemplate = true;
+        }
+
     }
 
     async saveSettings() {
@@ -57,11 +64,12 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
     }
 
     private async fillFileWithQuestions(fileContent: string) {
+        let outputString = '';
+        
         if (this.settings.useAdvancedTemplate) {
-
             let sections = this.getSections(fileContent);
             let headers = sections.map(x => x[0]);
-            let questionsSettings = this.parseQuestionSettings();
+            let questionsSettings = this.parseQuestionsTemplate();
             let questions = sections.map(x => {
                 let numOfQuestions = questionsSettings.get(sections.indexOf(x) + 1);
                 if (!numOfQuestions)
@@ -77,7 +85,30 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
                     return acc.concat(val);
             }, []);
 
-            let outputString = flattenQuestions.join("\n\n\n");
+            outputString = flattenQuestions.join("\n\n\n");
+
+           
+        } else {
+            let sections = this.getSections(fileContent);
+            let allQuestions = sections.reduce((acc, rec) => {
+                rec.shift();
+                console.log(rec);
+                return acc.concat(rec);
+            }, [])
+            console.log(allQuestions);
+            let numOfQuestions = this.settings.globalNumberOfQuestions;
+            
+            let pickedQuestions = [];
+            
+            for(let i = 0; i < numOfQuestions; i++){
+                let currentRandomNumber = this.getRandomInt(allQuestions.length)
+                let pickedQuestion = allQuestions[currentRandomNumber];
+                pickedQuestions.push(pickedQuestion);
+                allQuestions = allQuestions.filter(x => x !== pickedQuestion);
+            }
+
+            outputString = pickedQuestions.join("\n\n\n");
+        }
 
             let activeFile = this.app.workspace.getActiveFile();
             if (!activeFile || activeFile.extension !== MARKDOWN_EXTENSION) {
@@ -95,10 +126,7 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
                 this.app.workspace.createLeafBySplit(leaf);
             }
 
-            await leaf.openFile(activeFile);
-        } else {
-    
-        }
+            await leaf.openFile(activeFile);   
     }
 
     /**
@@ -119,7 +147,9 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
                     sections.push(currentArray)
                 currentArray = [];
             }
-            currentArray.push(curEl.trim())
+            if(curEl.trim().length !== 0){
+                currentArray.push(curEl.trim())
+            }
         }
         sections.push(currentArray)
 
@@ -173,7 +203,7 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
      * Prepare settings for using
      * @private
      */
-    private parseQuestionSettings(): Map<number, number> {
+    private parseQuestionsTemplate(): Map<number, number> {
         let result: Map<number, number> = new Map<number, number>();
 
         if (!this.settings.questionsTemplate)
@@ -232,7 +262,7 @@ class SettingTab
             .setName('Global number of questions')
             .setDesc('Picks that number of questions from the whole questions file')
             .addText(text => text
-                .setPlaceholder('5')
+                .setPlaceholder('Example: 5')
                 .setValue(this.plugin.settings.globalNumberOfQuestions.toString())
                 .onChange(async (new_template) => {
                     this.plugin.settings.globalNumberOfQuestions = +new_template;
@@ -255,7 +285,7 @@ class SettingTab
             .setName('Questions Template')
             .setDesc('Format: section1-numberOfQuestions;section1-numberOfQuestions; 1-3;2-2;...\n If section not specified picks random number of questions')
             .addText(text => text
-                .setPlaceholder('1-3;2-2;')
+                .setPlaceholder('Example: 1-3;2-2;')
                 .setValue(this.plugin.settings.questionsTemplate)
                 .onChange(async (new_template) => {
                     this.plugin.settings.questionsTemplate = new_template;
