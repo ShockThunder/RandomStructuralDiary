@@ -2,6 +2,10 @@
 Answer on random questions of your diary to get new thoughts;
 This plugin use a prepared list of questions if you doesn't have one.
 There is the list - https://zttl.wiki/Structural-diary-b5ecbe5e0dd643b1a868bd773b34094b
+### Update 1.1.0
+Now by default plugin picks number of question from the whole file.
+You can change this behaviour to old style in plugin settings.
+
 You can setup your own questions for example
 ```markdown
     #Section1
@@ -35,4 +39,6 @@ Release 1.0.6
  - Add support for questions files in folders
  - Add autofill for filename
  - Add option to show or hide section headers
+Release 1.1.0.
+ - Add global question picking feature
 
