@@ -39,6 +39,7 @@ Release 1.0.6
  - Add support for questions files in folders
  - Add autofill for filename
  - Add option to show or hide section headers
+
 Release 1.1.0.
  - Add global question picking feature
 
