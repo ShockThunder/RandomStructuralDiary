@@ -92,10 +92,8 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
             let sections = this.getSections(fileContent);
             let allQuestions = sections.reduce((acc, rec) => {
                 rec.shift();
-                console.log(rec);
                 return acc.concat(rec);
             }, [])
-            console.log(allQuestions);
             let numOfQuestions = this.settings.globalNumberOfQuestions;
             
             let pickedQuestions = [];
