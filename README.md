@@ -34,12 +34,18 @@ If section ommited then number of questions picks randomly (it can be 0);
 
 To use plugin create a new file and execute command
 `Create questions list`
+---
+
+Release 1.1.2.
+- Now question inserts into cursor location.
+
+Release 1.1.0.
+- Add global question picking feature
 
 Release 1.0.6
  - Add support for questions files in folders
  - Add autofill for filename
  - Add option to show or hide section headers
 
-Release 1.1.0.
- - Add global question picking feature
+
 

@@ -1,6 +1,5 @@
-import {App, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf} from 'obsidian';
+import {App, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf, Editor, MarkdownView} from 'obsidian';
 import {FileSuggest} from "./file-suggest";
-import {Obj} from "tern";
 
 interface PluginSettings {
     fileWithQuestions: string;
@@ -30,9 +29,8 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
         this.addCommand({
             id: 'create-questions-list',
             name: 'Create questions list',
-
+            
             callback: async () => {
-
                 let file = this.app.vault.getAbstractFileByPath(`${this.settings.fileWithQuestions}`);
                 if (file instanceof TFile) {
                     let fileContent = await this.app.vault.cachedRead(file);
@@ -113,9 +111,8 @@ export default class RandomStructuralDiaryPlugin extends Plugin {
                 let fileName = `RandomDiaryQuestions by ${this.getFancyDate()}.${MARKDOWN_EXTENSION}`;
                 activeFile = await this.app.vault.create(fileName, outputString);
             } else {
-                let userContent = await this.app.vault.cachedRead(activeFile);
-                outputString = userContent + '\n\n' + outputString;
-                await this.app.vault.modify(activeFile, outputString);
+                let view = this.app.workspace.getActiveViewOfType(MarkdownView);
+                view.editor.replaceRange(outputString, view.editor.getCursor())
             }
 
             let leaf = this.app.workspace.getMostRecentLeaf();
